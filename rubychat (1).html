@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RubyChat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--ruby:#ff2f7e;--ruby2:#ff5c9b;--bg:#0c0c11;--side:#101017;--panel:#15151d;--hover:#1c1c26;--line:#262633;--text:#f2f2f7;--dim:#a2a2b2;--mute:#6c6c7c;--green:#4ade80}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",Inter,system-ui,sans-serif}
+button,input,textarea{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--ruby);outline-offset:1px}
+.hidden{display:none!important}
+.app{display:grid;grid-template-columns:272px 1fr;height:100%}
+.side{display:flex;flex-direction:column;background:var(--side);border-right:1px solid var(--line);min-height:0}
+.brand{display:flex;align-items:center;gap:10px;height:56px;padding:0 16px;border-bottom:1px solid var(--line);font-weight:800;font-size:18px}
+.gem{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--ruby),#8b164d);display:grid;place-items:center;font-size:13px;box-shadow:0 0 18px rgba(255,47,126,.4)}
+.scroll{flex:1;overflow:auto;padding:10px 8px}
+.head{display:flex;justify-content:space-between;align-items:center;padding:14px 8px 4px;color:var(--mute);font-size:12px;font-weight:700}
+.head button{width:22px;height:22px;border-radius:6px;color:var(--dim);font-size:16px}.head button:hover{background:var(--hover);color:#fff}
+.item{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:8px;color:var(--dim);text-align:left;position:relative}
+.item:hover{background:var(--hover);color:#fff}
+.item.on{background:rgba(255,47,126,.14);color:#fff}
+.item.on::before{content:"";position:absolute;left:-8px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--ruby)}
+.item .hash{width:18px;text-align:center;color:var(--mute);font-weight:700}
+.item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .x{opacity:0;color:var(--mute);width:20px;height:20px;border-radius:5px}.item:hover .x{opacity:1}.item .x:hover{background:#3a1520;color:#ff8b9a}
+.av{flex:none;display:grid;place-items:center;border-radius:50%;color:#fff;font-weight:800;width:24px;height:24px;font-size:10px}
+.me{position:relative;border-top:1px solid var(--line);padding:8px}
+.meBtn{display:flex;align-items:center;gap:10px;width:100%;padding:7px;border-radius:9px;text-align:left}.meBtn:hover{background:var(--hover)}
+.meBtn .av{width:34px;height:34px;font-size:12px}
+.meBtn b{display:block;font-size:13px}.meBtn small{color:var(--mute)}
+.menu{position:absolute;left:8px;right:8px;bottom:64px;background:#1a1a24;border:1px solid var(--line);border-radius:11px;padding:5px;box-shadow:0 14px 40px rgba(0,0,0,.55);z-index:30}
+.menu button{display:block;width:100%;text-align:left;padding:9px 10px;border-radius:7px}.menu button:hover{background:var(--hover)}.menu .d{color:#ff8b9a}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.top{display:flex;align-items:center;gap:12px;height:56px;padding:0 18px;border-bottom:1px solid var(--line)}
+.burger{display:none;width:36px;height:36px;border-radius:8px;font-size:20px}.burger:hover{background:var(--hover)}
+.top h1{margin:0;font-size:16px}.top p{margin:0;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .t{min-width:0}
+.dot{margin-left:auto;font-size:11px;color:var(--mute);display:flex;align-items:center;gap:6px;white-space:nowrap}.dot i{width:8px;height:8px;border-radius:50%;background:#555}.dot.live i{background:var(--green);box-shadow:0 0 8px var(--green)}
+.msgs{flex:1;overflow:auto;padding:14px 0}
+.m{display:flex;gap:12px;padding:2px 20px;position:relative}
+.m:hover{background:rgba(255,255,255,.025)}
+.m.first{margin-top:14px}
+.m .av{width:38px;height:38px;font-size:13px;margin-top:2px}
+.m .sp{width:38px;flex:none;font-size:10px;color:transparent;text-align:right;padding-top:4px}.m:hover .sp{color:var(--mute)}
+.mb{min-width:0;flex:1}
+.mh{display:flex;gap:8px;align-items:baseline}.mh b{font-size:14px}
+.role{font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(255,47,126,.18);color:var(--ruby2)}
+.role.owner{background:rgba(250,204,21,.16);color:#facc15}
+.mh time{color:var(--mute);font-size:11px}
+.mc{white-space:pre-wrap;overflow-wrap:anywhere;color:#dcdce6}
+.mc a{color:var(--ruby2)}
+.act{position:absolute;right:20px;top:-12px;display:none;background:#1a1a24;border:1px solid var(--line);border-radius:8px}.m:hover .act{display:flex}
+.act button{width:30px;height:28px}.act button:hover{background:#3a1520}
+.empty{height:100%;display:grid;place-items:center;text-align:center;color:var(--mute);padding:20px}
+.empty h2{color:var(--text);margin:8px 0 4px}.empty .big{font-size:42px;color:var(--ruby)}
+.comp{padding:0 18px 16px}
+.cin{display:flex;align-items:flex-end;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px}
+.cin:focus-within{border-color:var(--ruby)}
+.cin textarea{flex:1;resize:none;border:0;outline:0;background:none;padding:9px 8px;max-height:160px;min-height:40px}
+.cin textarea::placeholder{color:var(--mute)}
+.send{width:40px;height:40px;border-radius:9px;background:var(--ruby);font-size:17px}.send:hover{background:var(--ruby2)}
+.hint{font-size:11px;color:var(--mute);padding:5px 4px 0}
+.modal{position:fixed;inset:0;z-index:50;display:none;place-items:center;background:rgba(0,0,0,.65);backdrop-filter:blur(6px)}.modal.show{display:grid}
+.card{width:min(480px,calc(100vw - 28px));max-height:88vh;overflow:auto;background:#13131a;border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+.card header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}.card h2{margin:0;font-size:16px}
+.card header button{width:30px;height:30px;border-radius:8px;font-size:18px;color:var(--dim)}.card header button:hover{background:var(--hover)}
+.body{padding:18px}
+label{display:block;color:var(--dim);font-size:12px;margin:0 0 6px}
+.in{width:100%;background:#0b0b10;border:1px solid var(--line);border-radius:9px;padding:10px 12px;outline:0;margin-bottom:14px}.in:focus{border-color:var(--ruby)}
+.row{display:flex;justify-content:flex-end;gap:8px}
+.btn{padding:9px 16px;border-radius:9px;background:var(--hover)}.btn:hover{background:#2a2a38}.btn.p{background:var(--ruby)}.btn.p:hover{background:var(--ruby2)}
+.tabs{display:flex;background:#0a0a0e;padding:4px;border-radius:10px;margin-bottom:16px}.tabs button{flex:1;padding:8px;border-radius:7px;color:var(--dim)}.tabs .on{background:var(--hover);color:#fff}
+.err{color:#ff8998;font-size:12px;margin-bottom:12px}.ok{color:var(--green);font-size:12px;margin-bottom:12px}
+.note{color:var(--mute);font-size:12px;margin-top:12px}
+.au{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:9px;margin-bottom:8px}
+.au .av{width:32px;height:32px;font-size:11px}.au div{flex:1;min-width:0}.au small{color:var(--mute);display:block}
+.au button{padding:6px 10px;border-radius:7px;background:var(--hover);font-size:12px}.au button:hover{background:#2a2a38}
+.pill{font-size:10px;padding:3px 7px;border-radius:20px;background:#20202a;color:var(--dim)}.pill.b{background:#431720;color:#ff8b9a}
+.toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:#1d1d28;border:1px solid var(--line);border-left:3px solid var(--ruby);padding:10px 14px;border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:90vw;animation:in .18s}
+.toast.good{border-left-color:var(--green)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+.shade{display:none}
+@media(max-width:760px){
+ .app{grid-template-columns:1fr}
+ .side{position:fixed;inset:0 auto 0 0;width:285px;z-index:40;transform:translateX(-100%);transition:transform .2s}
+ .side.open{transform:none}
+ .shade.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:35}
+ .burger{display:block}.m{padding:2px 12px}.act{right:10px}.hint{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.av{overflow:hidden}.av img{width:100%;height:100%;object-fit:cover}
+.comp{position:relative}
+.cin .tb{width:38px;height:40px;border-radius:9px;font-size:16px;color:var(--dim)}.cin .tb:hover{background:var(--hover);color:#fff}
+.pop{position:absolute;left:18px;right:18px;bottom:78px;background:#1a1a24;border:1px solid var(--line);border-radius:12px;padding:10px;box-shadow:0 14px 40px rgba(0,0,0,.55);z-index:20;max-width:520px}
+.gifs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;max-height:260px;overflow:auto;margin-top:8px}
+.gifs img{width:100%;height:90px;object-fit:cover;border-radius:7px;cursor:pointer}.gifs img:hover{outline:2px solid var(--ruby)}
+.pop .in{margin:0}.pop small{color:var(--mute);display:block;margin-top:6px}
+.pb{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pb button{padding:8px 12px;border-radius:8px;background:var(--hover)}.pb button:hover{background:var(--ruby)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.in[type=color]{padding:3px;height:40px}
+.gif{max-width:min(320px,100%);max-height:260px;border-radius:10px;display:block;margin-top:4px}
+.role.bot{background:rgba(74,222,128,.16);color:var(--green)}
+.fxl{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:80}
+.fall{position:absolute;top:-60px;animation:fall linear forwards}@keyframes fall{to{transform:translateY(112vh) rotate(360deg)}}
+.app{transition:transform 1s}.fx-flip .app{transform:rotate(180deg)}
+.fx-shake .app{animation:shk .45s 10}@keyframes shk{25%{transform:translateX(-14px)}75%{transform:translateX(14px)}}
+.fx-disco{animation:dsc .8s linear 7}@keyframes dsc{to{filter:hue-rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="app">
+ <aside class="side" id="side">
+  <div class="brand"><div class="gem">◆</div>RubyChat</div>
+  <div class="scroll">
+   <div class="head"><span>Chat</span></div>
+   <button class="item on" id="general"><span class="hash">#</span><span class="nm">General</span></button>
+   <div class="head"><span>Channels</span><button id="addCh" class="hidden" title="Create channel">＋</button></div>
+   <div id="chList"></div>
+   <div class="head"><span>Direct messages</span><button id="addDM" title="New message">＋</button></div>
+   <div id="dmList"></div>
+  </div>
+  <div class="me">
+   <div class="menu hidden" id="menu"></div>
+   <button class="meBtn" id="meBtn"><span class="av" id="meAv">?</span><span><b id="meName">Guest</b><small id="meRole">guest</small></span></button>
+  </div>
+ </aside>
+ <div class="shade" id="shade"></div>
+ <main class="main">
+  <header class="top">
+   <button class="burger" id="burger" aria-label="Open menu">☰</button>
+   <div class="t"><h1 id="title"># General</h1><p id="desc">Talk about anything.</p></div>
+   <div class="dot" id="live"><i></i><span>Connecting</span></div>
+  </header>
+  <section class="msgs" id="msgs"></section>
+  <footer class="comp">
+  <div class="pop hidden" id="gifP"><input class="in" id="gQ" placeholder="Search KLIPY"><div class="gifs" id="gGrid"></div><small>Powered by KLIPY</small></div>
+  <div class="pop hidden" id="prankP"><label>Emojis to rain</label><input class="in" id="pEm" value="🌧️💖✨"><div class="pb"><button data-fx="rain">Emoji rain</button><button data-fx="shake">Shake</button><button data-fx="flip">Flip screen</button><button data-fx="disco">Disco</button><button data-fx="bg">Paint everyone</button><input type="color" id="pCol" value="#ff2f7e" style="width:44px;height:36px;border:0;background:none"></div><small>Effects last a few seconds and run on everyone's screen.</small></div>
+   <div class="cin"><button class="tb hidden" id="prankBtn" title="Pranks" aria-label="Pranks">🎉</button><button class="tb" id="gifBtn" title="GIFs" aria-label="GIFs">GIF</button><textarea id="input" rows="1" maxlength="4000" placeholder="Message #General"></textarea><button class="send" id="send" aria-label="Send">➤</button></div>
+   <div class="hint">Enter to send · Shift+Enter for a new line</div>
+  </footer>
+ </main>
+</div>
+
+<div class="modal" id="authM"><div class="card"><header><h2>Account</h2><button data-x>×</button></header><div class="body">
+ <div class="tabs"><button class="on" id="tIn">Sign in</button><button id="tUp">Create account</button></div>
+ <div class="err hidden" id="aErr"></div><div class="ok hidden" id="aOk"></div>
+ <label>Username</label><input class="in" id="aUser" maxlength="32" autocomplete="username" placeholder="username">
+ <label>Password</label><input class="in" id="aPass" type="password" autocomplete="current-password" placeholder="Password">
+ <div class="row"><button class="btn p" id="aGo">Sign in</button></div>
+ <div class="note">Username and password only. No email needed.</div>
+</div></div></div>
+
+<div class="modal" id="chM"><div class="card"><header><h2>Create channel</h2><button data-x>×</button></header><div class="body">
+ <div class="err hidden" id="cErr"></div>
+ <label>Name</label><input class="in" id="cName" maxlength="32" placeholder="gaming">
+ <label>Description</label><input class="in" id="cDesc" maxlength="120" placeholder="What is this channel for?">
+ <div class="row"><button class="btn" data-x>Cancel</button><button class="btn p" id="cGo">Create</button></div>
+</div></div></div>
+
+<div class="modal" id="dmM"><div class="card"><header><h2>New direct message</h2><button data-x>×</button></header><div class="body">
+ <div class="err hidden" id="dErr"></div>
+ <label>Username</label><input class="in" id="dUser" placeholder="username">
+ <div class="row"><button class="btn" data-x>Cancel</button><button class="btn p" id="dGo">Start</button></div>
+</div></div></div>
+
+<div class="modal" id="admM"><div class="card"><header><h2>Admin panel</h2><button data-x>×</button></header><div class="body">
+ <div class="note" style="margin:0 0 14px">Only the owner can promote or demote admins. Admins can ban regular users.</div>
+ <div id="admList">Loading…</div>
+</div></div></div>
+
+<div class="modal" id="setM"><div class="card"><header><h2>Settings</h2><button data-x>×</button></header><div class="body">
+ <label>Profile picture</label><input type="file" class="in" id="sAv" accept="image/*">
+ <div class="two"><div><label>Background</label><input type="color" class="in" id="sBg" value="#0c0c11"></div><div><label>Accent</label><input type="color" class="in" id="sAcc" value="#ff2f7e"></div></div>
+ <label>KLIPY API key (for GIFs)</label><input class="in" id="sKey" placeholder="paste your key">
+ <div id="botBox" class="hidden"><hr style="border:0;border-top:1px solid var(--line);margin:4px 0 14px"><label>Rain bot account (username / password)</label>
+  <div class="two"><input class="in" id="sBotU" value="rain"><input class="in" id="sBotP" type="password" placeholder="password"></div>
+  <label>Rain file URL</label><input class="in" id="sSrc" value="rain-ai.html">
+  <div class="two"><select class="in" id="sModel"><option value="turbo">turbo (0.4GB)</option><option value="fast">fast (0.9GB)</option><option value="smart">smart (2.2GB)</option></select><label style="display:flex;gap:8px;align-items:center;margin:0 0 14px"><input type="checkbox" id="sOn"> Run Rain in this tab</label></div>
+  <div class="note" style="margin:-4px 0 12px" id="botSt">Rain is off.</div></div>
+ <div class="row"><button class="btn" id="sReset">Reset colors</button><button class="btn p" id="sSave">Save</button></div>
+</div></div></div>
+<div class="fxl" id="fxl"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+const db=supabase.createClient("https://pdmpykciorplmhgethsf.supabase.co","sb_publishable_9F1tQnyBD_5ZFt5QWtq0Pg_O4HLlwJS");
+const $=id=>document.getElementById(id);
+let user=null,prof=null,cur={mode:"channel",channel:null,dm:null},rt=null,authMode="in";
+const guest="Anonymous_"+(1000+Math.floor(Math.random()*9000));
+const cache=new Map();
+
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const link=s=>esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+const ini=n=>(n||"?").split(/[\s_]+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
+const hue=n=>{let h=0;for(const c of n||"?")h=(h*31+c.charCodeAt(0))%360;return`hsl(${h} 55% 42%)`};
+const av=(n,cls="",u)=>u&&/^(data:image\/|https:)/.test(u)?`<span class="av ${cls}"><img src="${esc(u)}" alt=""></span>`:`<span class="av ${cls}" style="background:${hue(n)}">${esc(ini(n))}</span>`;
+const isOwner=()=>prof?.role==="owner",isAdmin=()=>["owner","admin"].includes(prof?.role);
+const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
+const open=id=>{$(id).classList.add("show");const i=$(id).querySelector("input");i&&setTimeout(()=>i.focus(),30)};
+const close=id=>$(id).classList.remove("show");
+function toast(t,good){const e=document.createElement("div");e.className="toast"+(good?" good":"");e.textContent=t;$("toasts").append(e);setTimeout(()=>e.remove(),3500)}
+function msgErr(id,t){const e=$(id);e.textContent=t;e.classList.remove("hidden")}
+
+async function getP(id){
+ if(!id)return null;if(cache.has(id))return cache.get(id);
+ const{data}=await db.from("profiles").select("*").eq("id",id).maybeSingle();
+ cache.set(id,data||{id,username:"Unknown",role:""});return cache.get(id)}
+async function prefetch(ids){
+ const need=[...new Set(ids.filter(x=>x&&!cache.has(x)))];if(!need.length)return;
+ const{data}=await db.from("profiles").select("*").in("id",need);
+ (data||[]).forEach(p=>cache.set(p.id,p))}
+
+/* ---------- layout / menus ---------- */
+const side=$("side");
+const toggleSide=on=>{side.classList.toggle("open",on);$("shade").classList.toggle("open",on)};
+$("burger").onclick=()=>toggleSide(true);$("shade").onclick=()=>toggleSide(false);
+document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("mousedown",e=>{if(e.target===m)m.classList.remove("show")});m.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>m.classList.remove("show"))});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.querySelectorAll(".modal.show").forEach(m=>m.classList.remove("show"));show("menu",false);toggleSide(false)}});
+document.addEventListener("click",e=>{if(!e.target.closest(".me"))show("menu",false)});
+
+function buildMenu(){
+ const m=$("menu");m.innerHTML="";
+ const add=(t,fn,cls="")=>{const b=document.createElement("button");b.textContent=t;b.className=cls;b.onclick=()=>{show("menu",false);fn()};m.append(b)};
+ if(!user)add("Sign in or create account",openAuth);
+ else{add("Settings",openSettings);if(isAdmin())add("Admin panel",openAdmin);add("Sign out",signOut,"d")}}
+$("meBtn").onclick=()=>{buildMenu();$("menu").classList.toggle("hidden")};
+
+function updateUI(){
+ const n=prof?.username||guest;
+ $("meName").textContent=n;$("meRole").textContent=prof?.role||"guest";
+ $("meAv").innerHTML=prof?.avatar_url?`<img src="${esc(prof.avatar_url)}" alt="">`:esc(ini(n));$("meAv").style.background=hue(n);show("prankBtn",isAdmin());
+ show("addCh",isAdmin());
+ if(prof?.banned)toast("This account is banned from chatting.")}
+
+function setActive(el){
+ document.querySelectorAll(".item.on").forEach(x=>x.classList.remove("on"));el&&el.classList.add("on");toggleSide(false)}
+
+/* ---------- auth ---------- */
+const uname=s=>s.trim().toLowerCase(),okName=s=>/^[a-zA-Z0-9_]{2,32}$/.test(s.trim()),fake=u=>uname(u)+"@rubychat.local";
+function openAuth(){setAuthMode("in");$("aErr").classList.add("hidden");$("aOk").classList.add("hidden");open("authM")}
+function setAuthMode(m){authMode=m;$("tIn").classList.toggle("on",m==="in");$("tUp").classList.toggle("on",m==="up");$("aGo").textContent=m==="in"?"Sign in":"Create account";$("aErr").classList.add("hidden");$("aOk").classList.add("hidden")}
+$("tIn").onclick=()=>setAuthMode("in");$("tUp").onclick=()=>setAuthMode("up");
+["aUser","aPass"].forEach(i=>$(i).addEventListener("keydown",e=>{if(e.key==="Enter")$("aGo").click()}));
+
+async function loadProfile(){
+ if(!user){prof=null;return}
+ const{data,error}=await db.from("profiles").select("*").eq("id",user.id).maybeSingle();
+ if(error)console.error(error);prof=data||null;if(prof)cache.set(prof.id,prof)}
+
+$("aGo").onclick=async()=>{
+ $("aErr").classList.add("hidden");$("aOk").classList.add("hidden");
+ const u=uname($("aUser").value),p=$("aPass").value;
+ if(!okName(u))return msgErr("aErr","Username: 2–32 letters, numbers or underscores.");
+ if(authMode==="in"){
+  if(!p)return msgErr("aErr","Enter your password.");
+  const{data,error}=await db.auth.signInWithPassword({email:fake(u),password:p});
+  if(error)return msgErr("aErr","Wrong username or password.");
+  user=data.user;await loadProfile();
+  if(prof?.banned){await db.auth.signOut();user=prof=null;updateUI();return msgErr("aErr","This account is banned.")}
+  updateUI();close("authM");toast("Welcome back, "+(prof?.username||u),true);afterAuth()
+ }else{
+  if(p.length<6)return msgErr("aErr","Password needs at least 6 characters.");
+  const{data:ex}=await db.from("profiles").select("id").eq("username",u).maybeSingle();
+  if(ex)return msgErr("aErr","That username is taken.");
+  const{data,error}=await db.auth.signUp({email:fake(u),password:p});
+  if(error||!data.user)return msgErr("aErr",error?.message||"Could not create account.");
+  const{error:pe}=await db.from("profiles").insert({id:data.user.id,username:u,role:"user",banned:false});
+  if(pe)return msgErr("aErr","Account created, but profile failed: "+pe.message);
+  if(data.session){user=data.user;await loadProfile();updateUI();close("authM");toast("Account created",true);afterAuth()}
+  else{$("aOk").textContent="Account created. Switch to Sign in.";$("aOk").classList.remove("hidden")}}
+};
+async function afterAuth(){await loadDMs();reload()}
+async function signOut(){
+ await db.auth.signOut();user=prof=null;updateUI();$("dmList").innerHTML="";
+ openGeneral();toast("Signed out",true)}
+
+/* ---------- channels ---------- */
+async function loadChannels(){
+ const l=$("chList");l.innerHTML="";
+ const{data,error}=await db.from("channels").select("*").order("created_at");
+ if(error)return console.error(error);
+ (data||[]).forEach(c=>{
+  const b=document.createElement("button");b.className="item";b.dataset.cid=c.id;
+  b.innerHTML=`<span class="hash">#</span><span class="nm">${esc(c.name)}</span>${isAdmin()?'<span class="x" title="Delete channel" role="button">✕</span>':""}`;
+  b.onclick=e=>{if(e.target.closest(".x")){e.stopPropagation();return delChannel(c)}openChannel(c,b)};
+  if(cur.channel?.id===c.id)b.classList.add("on");
+  l.append(b)})}
+async function delChannel(c){
+ if(!confirm(`Delete #${c.name} and all its messages?`))return;
+ const{error}=await db.from("channels").delete().eq("id",c.id);
+ if(error)return toast("Could not delete: "+error.message);
+ toast("Channel deleted",true);if(cur.channel?.id===c.id)openGeneral();loadChannels()}
+function openGeneral(){cur={mode:"channel",channel:null,dm:null};setActive($("general"));head("# General","Talk about anything.","Message #General");reload()}
+function openChannel(c,el){cur={mode:"channel",channel:c,dm:null};setActive(el);head("# "+c.name,c.description||"RubyChat channel","Message #"+c.name);reload()}
+function head(t,d,p){$("title").textContent=t;$("desc").textContent=d;$("input").placeholder=p}
+$("general").onclick=openGeneral;
+$("addCh").onclick=()=>{$("cErr").classList.add("hidden");open("chM")};
+$("cGo").onclick=async()=>{
+ if(!isAdmin())return;
+ const name=$("cName").value.trim().replace(/\s+/g,"-").toLowerCase();
+ if(!name)return msgErr("cErr","Enter a channel name.");
+ const{error}=await db.from("channels").insert({name,description:$("cDesc").value.trim(),created_by:user.id});
+ if(error)return msgErr("cErr",error.message);
+ $("cName").value=$("cDesc").value="";close("chM");toast("#"+name+" created",true);loadChannels()};
+
+/* ---------- messages ---------- */
+const box=$("msgs");
+const emptyHTML=(i,t,s)=>`<div class="empty"><div><div class="big">${i}</div><h2>${t}</h2><div>${s}</div></div></div>`;
+const bottom=()=>box.scrollTop=box.scrollHeight;
+const nearBottom=()=>box.scrollHeight-box.scrollTop-box.clientHeight<140;
+
+async function reload(){
+ box.innerHTML=emptyHTML("◆","Loading…","");
+ let data,error;
+ if(cur.mode==="dm"){({data,error}=await db.from("dm_messages").select("*").eq("conversation_id",cur.dm.id).order("created_at").limit(200))}
+ else{let q=db.from("messages").select("*").order("created_at",{ascending:false}).limit(150);
+  q=cur.channel?q.eq("channel_id",cur.channel.id):q.is("channel_id",null);
+  ({data,error}=await q);data=(data||[]).reverse()}
+ if(error)return box.innerHTML=emptyHTML("!","Could not load messages",esc(error.message));
+ if(!data.length)return box.innerHTML=cur.mode==="dm"?emptyHTML("✉","No messages yet","Say hi to start the conversation."):emptyHTML("◆","Nothing here yet","Send the first message.");
+ await prefetch(data.map(m=>m.user_id));
+ box.innerHTML="";for(const m of data)await addMsg(m);bottom()}
+
+async function addMsg(m){
+ if(m.id!=null&&box.querySelector(`[data-id="${CSS.escape(String(m.id))}"]`))return;
+ box.querySelector(".empty")?.remove();
+ const dm=cur.mode==="dm",p=m.user_id?await getP(m.user_id):null;
+ const name=p?.username||m.anonymous_name||"Anonymous",role=p?.username===BOT?"bot":p?.role||"";
+ const key=m.user_id||m.anonymous_name||"?",t=new Date(m.created_at||Date.now());
+ const last=box.lastElementChild,group=last&&last.dataset.k===key&&t-last.dataset.t<300000;
+ const time=t.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+ const e=document.createElement("div");e.className="m"+(group?"":" first");
+ e.dataset.id=m.id??"";e.dataset.k=key;e.dataset.t=+t;
+ const canDel=m.id!=null&&user&&(m.user_id===user.id||(!dm&&isAdmin()));
+ e.innerHTML=(group?`<span class="sp">${esc(time.replace(/ ?[AP]M/,""))}</span>`:av(name,"",p?.avatar_url))+
+  `<div class="mb">${group?"":`<div class="mh"><b style="color:${hue(name).replace("42%","70%")}">${esc(name)}</b>${role&&role!=="user"?`<span class="role ${role}">${esc(role)}</span>`:""}<time>${esc(time)}</time></div>`}<div class="mc">${body(m.content)}</div></div>`+
+  (canDel?`<div class="act"><button title="Delete message" aria-label="Delete message">🗑</button></div>`:"");
+ e.querySelector(".act button")?.addEventListener("click",()=>delMsg(m,e));
+ box.append(e)}
+
+async function delMsg(m,el){
+ if(!confirm("Delete this message?"))return;
+ const{error}=await db.from(cur.mode==="dm"?"dm_messages":"messages").delete().eq("id",m.id);
+ if(error)return toast("Could not delete: "+error.message);
+ el.remove();toast("Message deleted",true)}
+
+async function send(txt){
+ const own=typeof txt==="string",c=(own?txt:$("input").value).trim();if(!c)return;
+ if(prof?.banned)return toast("You are banned and can't send messages.");
+ let table,row;
+ if(cur.mode==="dm"){
+  if(!user)return toast("Sign in to send DMs.");
+  table="dm_messages";row={conversation_id:cur.dm.id,user_id:user.id,content:c}}
+ else{table="messages";row={channel_id:cur.channel?.id||null,user_id:user?.id||null,anonymous_name:user?null:guest,content:c}}
+ if(!own){$("input").value="";autoGrow()}
+ const{data,error}=await db.from(table).insert(row).select().maybeSingle();
+ if(error){if(!own)$("input").value=c;return toast("Could not send: "+error.message)}
+ if(data){await addMsg(data);bottom()}}
+$("send").onclick=()=>send();
+$("input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}});
+const autoGrow=()=>{const t=$("input");t.style.height="auto";t.style.height=Math.min(t.scrollHeight,160)+"px"};
+$("input").addEventListener("input",autoGrow);
+
+/* ---------- DMs ---------- */
+async function loadDMs(){
+ const l=$("dmList");l.innerHTML="";if(!user)return;
+ const{data,error}=await db.from("dm_conversations").select("*").or(`user_a.eq.${user.id},user_b.eq.${user.id}`).order("created_at",{ascending:false});
+ if(error)return console.warn(error);
+ const others=(data||[]).map(d=>d.user_a===user.id?d.user_b:d.user_a);
+ await prefetch(others);
+ (data||[]).forEach((d,i)=>{
+  const p=cache.get(others[i]);if(!p)return;
+  const b=document.createElement("button");b.className="item";b.dataset.did=d.id;
+  b.innerHTML=av(p.username,"",p.avatar_url)+`<span class="nm">${esc(p.username)}</span>`;
+  b.onclick=()=>openDM(d,p,b);
+  if(cur.dm?.id===d.id)b.classList.add("on");
+  l.append(b)})}
+function openDM(d,p,el){cur={mode:"dm",channel:null,dm:d};setActive(el);head("@"+p.username,"Direct message","Message @"+p.username);reload()}
+$("addDM").onclick=()=>{if(!user){toast("Sign in to start a DM.");return openAuth()}$("dErr").classList.add("hidden");open("dmM")};
+$("dUser").addEventListener("keydown",e=>{if(e.key==="Enter")$("dGo").click()});
+$("dGo").onclick=async()=>{
+ const u=uname($("dUser").value);if(!u)return msgErr("dErr","Enter a username.");
+ const{data:p}=await db.from("profiles").select("*").eq("username",u).maybeSingle();
+ if(!p)return msgErr("dErr","No user with that name.");
+ if(p.id===user.id)return msgErr("dErr","You can't message yourself.");
+ cache.set(p.id,p);
+ let{data:c}=await db.from("dm_conversations").select("*").or(`and(user_a.eq.${user.id},user_b.eq.${p.id}),and(user_a.eq.${p.id},user_b.eq.${user.id})`).maybeSingle();
+ if(!c){const r=await db.from("dm_conversations").insert({user_a:user.id,user_b:p.id}).select().single();
+  if(r.error)return msgErr("dErr",r.error.message);c=r.data}
+ $("dUser").value="";close("dmM");await loadDMs();
+ openDM(c,p,document.querySelector(`[data-did="${CSS.escape(String(c.id))}"]`))};
+
+/* ---------- admin ---------- */
+async function openAdmin(){
+ if(!isAdmin())return;open("admM");const l=$("admList");l.textContent="Loading…";
+ const{data,error}=await db.from("profiles").select("id,username,role,banned").order("username");
+ if(error)return l.innerHTML=`<div class="err">${esc(error.message)}</div>`;
+ l.innerHTML="";
+ data.forEach(p=>{
+  const self=p.id===user.id,r=document.createElement("div");r.className="au";
+  r.innerHTML=av(p.username)+`<div><b>${esc(p.username)}</b><small>${esc(p.role)}</small></div><span class="pill ${p.banned?"b":""}">${p.banned?"Banned":"Active"}</span>`;
+  if(isOwner()&&!self&&p.role!=="owner"){const b=document.createElement("button");b.textContent=p.role==="admin"?"Demote":"Make admin";b.onclick=()=>upd(p.id,{role:p.role==="admin"?"user":"admin"},"Role updated");r.append(b)}
+  if(!self&&(isOwner()||(prof.role==="admin"&&p.role==="user"))){const b=document.createElement("button");b.textContent=p.banned?"Unban":"Ban";b.onclick=()=>upd(p.id,{banned:!p.banned},p.banned?"User unbanned":"User banned");r.append(b)}
+  l.append(r)})}
+async function upd(id,patch,msg){
+ const{error}=await db.from("profiles").update(patch).eq("id",id);
+ if(error)return toast("Failed: "+error.message+" (check your Supabase RLS policies)");
+ cache.delete(id);toast(msg,true);openAdmin()}
+
+/* ---------- realtime ---------- */
+function setLive(on,t){$("live").classList.toggle("live",on);$("live").lastElementChild.textContent=t}
+function realtime(){
+ if(rt)db.removeChannel(rt);
+ rt=db.channel("rc-"+Date.now())
+ .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},async({new:m})=>{
+  if(cur.mode!=="channel")return;
+  const same=cur.channel?String(m.channel_id)===String(cur.channel.id):m.channel_id===null;
+  if(!same)return;const nb=nearBottom();await addMsg(m);if(nb)bottom()})
+ .on("postgres_changes",{event:"INSERT",schema:"public",table:"dm_messages"},async({new:m})=>{
+  if(cur.mode!=="dm"||String(m.conversation_id)!==String(cur.dm?.id))return;
+  const nb=nearBottom();await addMsg(m);if(nb)bottom()})
+ .on("postgres_changes",{event:"DELETE",schema:"public",table:"messages"},({old:o})=>{o?.id!=null&&box.querySelector(`[data-id="${CSS.escape(String(o.id))}"]`)?.remove()})
+ .on("postgres_changes",{event:"INSERT",schema:"public",table:"pranks"},({new:r})=>{if(Date.now()-new Date(r.created_at)<15000)runFx(r)})
+ .on("postgres_changes",{event:"INSERT",schema:"public",table:"channels"},()=>loadChannels())
+ .on("postgres_changes",{event:"DELETE",schema:"public",table:"channels"},()=>loadChannels())
+ .subscribe(s=>{
+  if(s==="SUBSCRIBED")setLive(true,"Live");
+  else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){setLive(false,"Reconnecting");setTimeout(realtime,5000)}
+  else if(s==="CLOSED")setLive(false,"Offline")})}
+
+/* ---------- gifs / pranks / settings / Rain bot ---------- */
+const BOT="rain",KLIPY_KEY="",SB=["https://pdmpykciorplmhgethsf.supabase.co","sb_publishable_9F1tQnyBD_5ZFt5QWtq0Pg_O4HLlwJS"];
+const LS=k=>{try{return localStorage.getItem(k)}catch{return null}},SS=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
+function body(t){const m=/^\[gif\](https:\/\/\S+)$/.exec(t);return m?`<img class="gif" loading="lazy" src="${esc(m[1])}" alt="GIF">`:link(t)}
+const pops=["gifP","prankP"],togglePop=id=>{pops.forEach(p=>show(p,p===id&&$(p).classList.contains("hidden")))};
+document.addEventListener("mousedown",e=>{if(!e.target.closest(".pop,.tb"))pops.forEach(p=>show(p,false))});
+
+/* GIFs */
+const find=o=>{if(typeof o==="string")return/^https:\/\/\S+\.(gif|webp)(\?|$)/i.test(o)?o:null;if(o&&typeof o==="object")for(const v of Object.values(o)){const r=find(v);if(r)return r}return null};
+let gT;
+async function gifSearch(){
+ const key=LS("rc_klipy")||KLIPY_KEY,g=$("gGrid");
+ if(!key){g.innerHTML='<small>Add your KLIPY API key in Settings first.</small>';return}
+ let cid=LS("rc_cid");if(!cid){cid=Math.random().toString(36).slice(2);SS("rc_cid",cid)}
+ const q=$("gQ").value.trim(),p=new URLSearchParams({per_page:24,customer_id:cid});if(q)p.set("q",q);
+ try{const r=await fetch(`https://api.klipy.com/api/v1/${encodeURIComponent(key)}/gifs/${q?"search":"trending"}?${p}`),j=await r.json();
+  const items=j?.data?.data||j?.data||j?.results||[];g.innerHTML="";
+  items.forEach(it=>{const u=find(it.file?.sm)||find(it.file?.md)||find(it);if(!u)return;const i=document.createElement("img");i.src=u;i.loading="lazy";i.onclick=()=>{send("[gif]"+(find(it.file?.md)||u));show("gifP",false)};g.append(i)});
+  if(!g.children.length)g.innerHTML="<small>No GIFs found.</small>"}catch(e){g.innerHTML="<small>GIF search failed. Check your key.</small>"}}
+$("gifBtn").onclick=()=>{togglePop("gifP");if(!$("gifP").classList.contains("hidden")){$("gQ").focus();gifSearch()}};
+$("gQ").oninput=()=>{clearTimeout(gT);gT=setTimeout(gifSearch,400)};
+
+/* pranks (stored in a `pranks` table so RLS decides who may run them) */
+$("prankBtn").onclick=()=>togglePop("prankP");
+document.querySelectorAll("[data-fx]").forEach(b=>b.onclick=async()=>{
+ if(!isAdmin())return;const k=b.dataset.fx;
+ const{error}=await db.from("pranks").insert({kind:k,data:k==="rain"?$("pEm").value:k==="bg"?$("pCol").value:""});
+ if(error)toast("Prank failed: "+error.message+" (run the pranks SQL)");show("prankP",false)});
+function runFx(r){
+ const k=r.kind,d=r.data,B=document.body;
+ if(k==="rain"){const em=[...new Intl.Segmenter().segment(d||"🌧️")].map(x=>x.segment).filter(x=>x.trim());
+  for(let i=0;i<80;i++){const s=document.createElement("span");s.className="fall";s.textContent=em[i%em.length];
+   s.style.cssText=`left:${Math.random()*100}vw;font-size:${18+Math.random()*28}px;animation-duration:${2.5+Math.random()*3}s;animation-delay:${Math.random()*2.5}s`;
+   $("fxl").append(s);setTimeout(()=>s.remove(),8500)}}
+ else if(k==="bg"&&/^#[0-9a-f]{6}$/i.test(d)){document.documentElement.style.setProperty("--bg",d);setTimeout(applyTheme,12000)}
+ else if(["shake","flip","disco"].includes(k)){B.classList.add("fx-"+k);setTimeout(()=>B.classList.remove("fx-"+k),k==="flip"?7000:5500)}}
+
+/* settings: avatar, colors, key, Rain host */
+function applyTheme(){const R=document.documentElement.style,b=LS("rc_bg"),a=LS("rc_acc");
+ b?R.setProperty("--bg",b):R.removeProperty("--bg");if(a){R.setProperty("--ruby",a);R.setProperty("--ruby2",a)}else{R.removeProperty("--ruby");R.removeProperty("--ruby2")}}
+function openSettings(){
+ $("sBg").value=LS("rc_bg")||"#0c0c11";$("sAcc").value=LS("rc_acc")||"#ff2f7e";$("sKey").value=LS("rc_klipy")||"";
+ show("botBox",isOwner());$("sBotU").value=LS("rc_bot_user")||BOT;$("sSrc").value=LS("rc_rain_src")||"rain-ai.html";
+ $("sModel").value=LS("rc_rain_model")||"fast";$("sOn").checked=LS("rc_bot_on")==="1";open("setM")}
+$("sBg").oninput=()=>{SS("rc_bg",$("sBg").value);applyTheme()};
+$("sAcc").oninput=()=>{SS("rc_acc",$("sAcc").value);applyTheme()};
+$("sReset").onclick=()=>{try{localStorage.removeItem("rc_bg");localStorage.removeItem("rc_acc")}catch{}applyTheme()};
+$("sAv").onchange=e=>{
+ const f=e.target.files[0];if(!f||!user)return toast("Sign in to set a picture.");
+ const img=new Image();img.onload=async()=>{
+  const c=document.createElement("canvas");c.width=c.height=128;const s=Math.min(img.width,img.height);
+  c.getContext("2d").drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,128,128);
+  const url=c.toDataURL("image/jpeg",.82),{error}=await db.from("profiles").update({avatar_url:url}).eq("id",user.id);
+  if(error)return toast("Couldn't save picture: "+error.message+" (run the avatar SQL)");
+  prof.avatar_url=url;cache.set(user.id,prof);updateUI();toast("Profile picture updated",true)};
+ img.src=URL.createObjectURL(f)};
+$("sSave").onclick=async()=>{
+ SS("rc_klipy",$("sKey").value.trim());
+ if(isOwner()){SS("rc_bot_user",uname($("sBotU").value));if($("sBotP").value)SS("rc_bot_pass",$("sBotP").value);
+  SS("rc_rain_src",$("sSrc").value.trim());SS("rc_rain_model",$("sModel").value);SS("rc_bot_on",$("sOn").checked?"1":"0");
+  stopRain();if($("sOn").checked)startRain()}
+ close("setM");toast("Settings saved",true)};
+
+/* Rain: runs in the owner's open tab, signs in as its own account, answers every message and every DM */
+let bot,botUser,rf,botCh,q=[],working=false,last=0;
+const botSt=t=>{$("botSt").textContent=t};
+function stopRain(){botCh&&bot?.removeChannel(botCh);rf?.remove();bot=botUser=rf=botCh=null;q=[];botSt("Rain is off.")}
+function rainReady(){return new Promise(ok=>{const h=e=>{if(e.source===rf?.contentWindow&&e.data?.type==="rain:ready"){removeEventListener("message",h);clearInterval(t);ok()}};addEventListener("message",h);
+ const t=setInterval(()=>rf?.contentWindow?.postMessage({type:"rain:ping"},"*"),2000)})}
+function rainAsk(prompt,system){return new Promise((ok,no)=>{const id=Math.random().toString(36).slice(2);
+ const h=e=>{if(e.source!==rf?.contentWindow||e.data?.id!==id)return;removeEventListener("message",h);e.data.type==="rain:error"?no(new Error(e.data.error)):ok(e.data.text)};
+ addEventListener("message",h);rf.contentWindow.postMessage({type:"rain:ask",id,prompt,system,maxTokens:110,temperature:.85},"*")})}
+async function startRain(){
+ const u=LS("rc_bot_user")||BOT,p=LS("rc_bot_pass");
+ if(!isOwner()||LS("rc_bot_on")!=="1"||!p||bot)return;
+ bot=supabase.createClient(...SB,{auth:{storageKey:"rc-bot",persistSession:false,autoRefreshToken:true}});
+ let r=await bot.auth.signInWithPassword({email:fake(u),password:p});
+ if(r.error){const s=await bot.auth.signUp({email:fake(u),password:p});
+  if(s.error||!s.data.user){botSt("Bot login failed: "+(s.error?.message||r.error.message));bot=null;return}
+  await bot.from("profiles").insert({id:s.data.user.id,username:u,role:"user",banned:false});
+  r=await bot.auth.signInWithPassword({email:fake(u),password:p});if(r.error){botSt("Bot account made, but sign-in failed: "+r.error.message);bot=null;return}}
+ botUser=r.data.user;
+ rf=document.createElement("iframe");rf.src=(LS("rc_rain_src")||"rain-ai.html")+"?headless=1&model="+(LS("rc_rain_model")||"fast");
+ rf.style.cssText="position:fixed;width:1px;height:1px;border:0;opacity:0;pointer-events:none;bottom:0;left:0";document.body.append(rf);
+ botSt("Loading Rain's model…");toast("Loading Rain's model…");await rainReady();botSt("Rain is online ("+u+").");toast("Rain is online",true);
+ botCh=bot.channel("bot-"+Date.now())
+  .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},({new:m})=>enq("pub",m))
+  .on("postgres_changes",{event:"INSERT",schema:"public",table:"dm_messages"},({new:m})=>enq("dm",m)).subscribe()}
+function enq(kind,m){
+ if(!botUser||m.user_id===botUser.id||String(m.content).startsWith("[gif]"))return;
+ q.push([kind,m]);if(q.length>2)q.shift();pump()}
+async function pump(){
+ if(working)return;working=true;
+ while(q.length){const[kind,m]=q.shift();
+  try{const wait=4000-(Date.now()-last);if(wait>0)await new Promise(r=>setTimeout(r,wait));
+   const dm=kind==="dm";let h=bot.from(dm?"dm_messages":"messages").select("*").order("created_at",{ascending:false}).limit(8);
+   h=dm?h.eq("conversation_id",m.conversation_id):m.channel_id==null?h.is("channel_id",null):h.eq("channel_id",m.channel_id);
+   const{data:rows}=await h;if(dm&&!rows?.length)continue;
+   const ids=[...new Set(rows.map(x=>x.user_id).filter(Boolean))],{data:ps}=await bot.from("profiles").select("id,username").in("id",ids),nm=Object.fromEntries((ps||[]).map(x=>[x.id,x.username]));
+   const lines=rows.reverse().map(x=>`${x.user_id===botUser.id?"Rain":nm[x.user_id]||x.anonymous_name||"someone"}: ${x.content}`).join("\n");
+   let t=await rainAsk(`Chat so far:\n${lines}\n\nWrite Rain's next message.`,"You are Rain, a witty, friendly member of the RubyChat server. Chat like a real person: casual, one or two short sentences, no markdown. Reply naturally to the latest message. Output only the message text, never start with your own name.");
+   t=(t||"").replace(/^\s*rain\s*:\s*/i,"").trim();if(!t)continue;
+   await bot.from(dm?"dm_messages":"messages").insert(dm?{conversation_id:m.conversation_id,user_id:botUser.id,content:t}:{channel_id:m.channel_id??null,user_id:botUser.id,content:t});
+   last=Date.now()}catch(e){console.warn("Rain:",e)}}
+ working=false}
+
+/* ---------- start ---------- */
+db.auth.onAuthStateChange((_e,s)=>{
+ setTimeout(async()=>{
+  const id=s?.user?.id||null;if(id===(user?.id||null))return;
+  user=s?.user||null;await loadProfile();updateUI();loadChannels();loadDMs()},0)});
+(async()=>{
+ const{data:{session}}=await db.auth.getSession();
+ user=session?.user||null;await loadProfile();updateUI();
+ applyTheme();await loadChannels();await loadDMs();realtime();openGeneral();startRain()})();
+</script>
+</body>
+</html>
